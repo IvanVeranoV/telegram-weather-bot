@@ -37,6 +37,9 @@ class OpenMeteoProvider(WeatherProvider):
         }
 
         response = await self.async_client.get(url=URL_ENDPOINT, params=params)
+        if response.is_error:
+            print(f"Open-Meteo error response: {response.text}")
+
         response.raise_for_status()
 
         json_response = response.json()
