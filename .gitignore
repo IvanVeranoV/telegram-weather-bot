@@ -1,0 +1,35 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Cachés y archivos generados
+.cache/
+.cache.sqlite
+*.log
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Herramientas de desarrollo
+.idea/
+.vscode/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
