@@ -29,6 +29,8 @@ SUMMARY_HOURS = 4
 
 class TelegramBot:
     def __init__(self, settings):
+        self.settings = settings
+
         token = settings.telegram_bot_token
         if not token or token.strip() == "" or " " in token:
             raise ValueError("No se ha encontrado el token de Telegram")
@@ -327,4 +329,14 @@ class TelegramBot:
 
     def run(self):
         print("Bot iniciado correctamente...")
-        self.application.run_polling()
+
+        if self.settings.environment == "development":
+            self.application.run_polling()
+            return
+
+        self.application.run_webhook(
+            listen="0.0.0.0",
+            port=self.settings.port,
+            webhook_url=self.settings.webhook_url,
+            secret_token=self.settings.webhook_secret,
+        )

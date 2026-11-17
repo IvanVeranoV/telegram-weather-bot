@@ -1,6 +1,6 @@
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from src.telegram_bot.bot import AWAITING_QUERY, TelegramBot
 
@@ -69,3 +69,35 @@ def test_normal_message_without_search_is_ignored():
     asyncio.run(bot.handle_search_query(update, context))
 
     update.message.reply_text.assert_not_awaited()
+
+
+def test_run_uses_polling_in_development():
+    bot = create_bot()
+    bot.settings = SimpleNamespace(environment="development")
+    bot.application = Mock()
+
+    bot.run()
+
+    bot.application.run_polling.assert_called_once_with()
+    bot.application.run_webhook.assert_not_called()
+
+
+def test_run_uses_webhook_in_staging_and_production():
+    bot = create_bot()
+    bot.settings = SimpleNamespace(
+        environment="staging",
+        webhook_url="https://example.com",
+        webhook_secret="test-secret",
+        port=8080,
+    )
+    bot.application = Mock()
+
+    bot.run()
+
+    bot.application.run_webhook.assert_called_once_with(
+        listen="0.0.0.0",
+        port=8080,
+        webhook_url="https://example.com",
+        secret_token="test-secret",
+    )
+    bot.application.run_polling.assert_not_called()
