@@ -42,6 +42,6 @@ class NominatimProvider(GeocodingProvider):
                     )
                 )
             except (ValueError, TypeError, KeyError) as error:
-                print(f"Candidato descartado: {error}")
+                print(f"Candidate discarded: {error}")
                 continue
         return location_candidates

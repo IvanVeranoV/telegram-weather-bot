@@ -462,7 +462,7 @@ class TelegramBot:
         )
 
     def run(self):
-        print("Bot iniciado correctamente...")
+        print("Bot started successfully...")
 
         if self.settings.environment == "development":
             self.application.run_polling()
