@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import timedelta
 from zoneinfo import ZoneInfo
@@ -36,6 +37,14 @@ AWAITING_QUERY = "awaiting_query"
 DEFAULT_FORECAST_HOURS = 24
 LAST_LOCATION = "last_location"
 SUMMARY_HOURS = 4
+
+GEMINI_ANALYSIS_TIMEOUT_SECONDS = 10
+GEMINI_UNAVAILABLE_MESSAGE = (
+    "⚠️ El análisis IA no está disponible temporalmente. "
+    "El servicio puede estar experimentando una alta demanda "
+    "o una incidencia. El pronóstico meteorológico anterior "
+    "sigue siendo válido."
+)
 
 
 class TelegramBot:
@@ -79,8 +88,8 @@ class TelegramBot:
                 self.settings.gemini_model,
             )
             application.bot_data["gemini_provider"] = gemini_provider
-            application.bot_data["weather_analysis_service"] = (
-                WeatherAnalysisService(gemini_provider)
+            application.bot_data["weather_analysis_service"] = WeatherAnalysisService(
+                gemini_provider
             )
             self.logger.info(
                 "Gemini weather analysis enabled with model %s",
@@ -410,20 +419,29 @@ class TelegramBot:
             parse_mode="HTML",
         )
 
-        analysis_service = context.application.bot_data.get(
-            "weather_analysis_service"
-        )
+        analysis_service = context.application.bot_data.get("weather_analysis_service")
 
         if analysis_service is None:
             return
 
         try:
-            analysis = await analysis_service.analyze(
-                weather_data,
-                f"{location.name}, {location.country}",
+            analysis = await asyncio.wait_for(
+                analysis_service.analyze(
+                    weather_data,
+                    f"{location.name}, {location.country}",
+                ),
+                timeout=GEMINI_ANALYSIS_TIMEOUT_SECONDS,
             )
+        except TimeoutError:
+            self.logger.warning(
+                "Gemini weather analysis timed out after %s seconds",
+                GEMINI_ANALYSIS_TIMEOUT_SECONDS,
+            )
+            await update.message.reply_text(GEMINI_UNAVAILABLE_MESSAGE)
+            return
         except Exception:
             self.logger.exception("Gemini weather analysis failed")
+            await update.message.reply_text(GEMINI_UNAVAILABLE_MESSAGE)
             return
 
         await update.message.reply_text(

@@ -3,7 +3,13 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from src.telegram_bot.bot import AWAITING_QUERY, LAST_LOCATION, TelegramBot
+from src.telegram_bot.bot import (
+    AWAITING_QUERY,
+    GEMINI_ANALYSIS_TIMEOUT_SECONDS,
+    GEMINI_UNAVAILABLE_MESSAGE,
+    LAST_LOCATION,
+    TelegramBot,
+)
 from src.weather.models.hourly_weather_data import HourlyWeatherData
 from src.weather.models.weather_data import WeatherData
 
@@ -204,8 +210,10 @@ def test_forecast_sends_weather_when_ai_analysis_fails():
 
     asyncio.run(bot.forecast(update, context))
 
-    assert message.reply_text.await_count == 1
-    assert message.reply_text.await_args.kwargs["parse_mode"] == "HTML"
+    assert message.reply_text.await_count == 2
+    assert message.reply_text.await_args_list[0].kwargs["parse_mode"] == "HTML"
+    assert message.reply_text.await_args_list[1].args[0] == GEMINI_UNAVAILABLE_MESSAGE
+    bot.logger.exception.assert_called_once_with("Gemini weather analysis failed")
 
 
 def test_forecast_sends_weather_when_ai_is_not_configured():
@@ -225,12 +233,64 @@ def test_forecast_sends_weather_when_ai_is_not_configured():
     update = SimpleNamespace(message=message)
     context = SimpleNamespace(
         user_data={LAST_LOCATION: location},
-        application=SimpleNamespace(
-            bot_data={"weather_provider": weather_provider}
-        ),
+        application=SimpleNamespace(bot_data={"weather_provider": weather_provider}),
     )
 
     asyncio.run(bot.forecast(update, context))
 
     assert message.reply_text.await_count == 1
     weather_provider.get_forecast.assert_awaited_once()
+
+    def test_forecast_sends_weather_when_ai_analysis_times_out(monkeypatch):
+        bot = create_bot()
+        bot.logger = Mock()
+
+        location = SimpleNamespace(
+            latitude=40.4168,
+            longitude=-3.7038,
+            name="Madrid",
+            country="ES",
+        )
+        weather_provider = SimpleNamespace(
+            get_forecast=AsyncMock(return_value=create_weather_data())
+        )
+        analysis_service = SimpleNamespace(
+            analyze=AsyncMock(return_value="Análisis meteorológico")
+        )
+        message = SimpleNamespace(reply_text=AsyncMock())
+        update = SimpleNamespace(message=message)
+        context = SimpleNamespace(
+            user_data={LAST_LOCATION: location},
+            application=SimpleNamespace(
+                bot_data={
+                    "weather_provider": weather_provider,
+                    "weather_analysis_service": analysis_service,
+                }
+            ),
+        )
+
+        async def simulate_timeout(awaitable, timeout):
+            awaitable.close()
+            raise TimeoutError
+
+        wait_for_mock = AsyncMock(side_effect=simulate_timeout)
+        monkeypatch.setattr(
+            "src.telegram_bot.bot.asyncio.wait_for",
+            wait_for_mock,
+        )
+
+        asyncio.run(bot.forecast(update, context))
+
+        wait_for_mock.assert_awaited_once()
+        assert (
+            wait_for_mock.await_args.kwargs["timeout"]
+            == GEMINI_ANALYSIS_TIMEOUT_SECONDS
+            == 10
+        )
+
+        assert message.reply_text.await_count == 2
+        assert message.reply_text.await_args_list[0].kwargs["parse_mode"] == "HTML"
+        assert (
+            message.reply_text.await_args_list[1].args[0] == GEMINI_UNAVAILABLE_MESSAGE
+        )
+        bot.logger.warning.assert_called_once()
