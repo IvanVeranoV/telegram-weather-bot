@@ -1,12 +1,12 @@
-import logging
-
+from src.config.logging_config import configure_logging
 from src.config.settings import Settings
 from src.telegram_bot.bot import TelegramBot
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
     settings = Settings()
+    configure_logging(settings)
+
     telegram_bot = TelegramBot(settings)
     telegram_bot.run()
 
