@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import timedelta
 from zoneinfo import ZoneInfo
@@ -18,6 +19,8 @@ from telegram.ext import (
     filters,
 )
 
+from src.ai.providers.gemini_provider import GeminiProvider
+from src.ai.services.weather_analysis_service import WeatherAnalysisService
 from src.geocoding.providers.nominatim_provider import NominatimProvider
 from src.weather.providers.open_meteo_provider import OpenMeteoProvider
 from src.weather.providers.weather_provider_error import (
@@ -34,6 +37,14 @@ AWAITING_QUERY = "awaiting_query"
 DEFAULT_FORECAST_HOURS = 24
 LAST_LOCATION = "last_location"
 SUMMARY_HOURS = 4
+
+GEMINI_ANALYSIS_TIMEOUT_SECONDS = 10
+GEMINI_UNAVAILABLE_MESSAGE = (
+    "⚠️ El análisis IA no está disponible temporalmente. "
+    "El servicio puede estar experimentando una alta demanda "
+    "o una incidencia. El pronóstico meteorológico anterior "
+    "sigue siendo válido."
+)
 
 
 class TelegramBot:
@@ -60,7 +71,7 @@ class TelegramBot:
         commands = [
             BotCommand("start", "Iniciar el bot"),
             BotCommand("search", "Buscar el tiempo de una ciudad"),
-            BotCommand("forecast", "Consultar el pronóstico completo de 24 horas"),
+            BotCommand("forecast", "Pronóstico de 24 h con análisis IA"),
             BotCommand("cancel", "Cancelar búsqueda actual"),
         ]
 
@@ -71,10 +82,32 @@ class TelegramBot:
         application.bot_data["geocoding_provider"] = NominatimProvider(async_client)
         application.bot_data["weather_provider"] = OpenMeteoProvider(async_client)
 
+        if self.settings.gemini_api_key:
+            gemini_provider = GeminiProvider(
+                self.settings.gemini_api_key,
+                self.settings.gemini_model,
+            )
+            application.bot_data["gemini_provider"] = gemini_provider
+            application.bot_data["weather_analysis_service"] = WeatherAnalysisService(
+                gemini_provider
+            )
+            self.logger.info(
+                "Gemini weather analysis enabled with model %s",
+                self.settings.gemini_model,
+            )
+        else:
+            self.logger.warning(
+                "GEMINI_API_KEY is not configured; AI weather analysis is disabled"
+            )
+
     async def _post_shutdown(self, application: Application):
         async_client = application.bot_data.get("async_client")
         if async_client:
             await async_client.aclose()
+
+        gemini_provider = application.bot_data.get("gemini_provider")
+        if gemini_provider:
+            await gemini_provider.close()
 
     def _register_handlers(self):
         self.application.add_handler(CommandHandler("start", self.start))
@@ -384,6 +417,36 @@ class TelegramBot:
         await update.message.reply_text(
             "\n".join(lines),
             parse_mode="HTML",
+        )
+
+        analysis_service = context.application.bot_data.get("weather_analysis_service")
+
+        if analysis_service is None:
+            return
+
+        try:
+            analysis = await asyncio.wait_for(
+                analysis_service.analyze(
+                    weather_data,
+                    f"{location.name}, {location.country}",
+                ),
+                timeout=GEMINI_ANALYSIS_TIMEOUT_SECONDS,
+            )
+        except TimeoutError:
+            self.logger.warning(
+                "Gemini weather analysis timed out after %s seconds",
+                GEMINI_ANALYSIS_TIMEOUT_SECONDS,
+            )
+            await update.message.reply_text(GEMINI_UNAVAILABLE_MESSAGE)
+            return
+        except Exception:
+            self.logger.exception("Gemini weather analysis failed")
+            await update.message.reply_text(GEMINI_UNAVAILABLE_MESSAGE)
+            return
+
+        await update.message.reply_text(
+            f"🤖 Análisis IA\n\n{analysis}",
+            parse_mode=None,
         )
 
     async def cancel(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

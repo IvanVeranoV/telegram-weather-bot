@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 
 from src.config.settings_error import SettingsError
 
+DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+
 
 class Settings:
     VALID_ENVIRONMENTS = frozenset(
@@ -30,6 +32,11 @@ class Settings:
             raise SettingsError(f"Invalid APP_ENV value: {self.environment!r}")
 
         self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+        self.gemini_model = (
+            os.getenv("GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip()
+            or DEFAULT_GEMINI_MODEL
+        )
 
         self.webhook_url = None
         self.webhook_secret = None

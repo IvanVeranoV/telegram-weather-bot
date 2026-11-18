@@ -1,7 +1,7 @@
 
 import pytest
 
-from src.config.settings import Settings
+from src.config.settings import DEFAULT_GEMINI_MODEL, Settings
 from src.config.settings_error import SettingsError
 
 
@@ -117,3 +117,31 @@ def test_settings_does_not_require_webhook_configuration_in_development(
     assert settings.webhook_url is None
     assert settings.webhook_secret is None
     assert settings.port is None
+
+
+def test_settings_uses_default_gemini_configuration_when_key_is_missing(
+    monkeypatch,
+    disable_dotenv,
+):
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+
+    settings = Settings()
+
+    assert settings.gemini_api_key is None
+    assert settings.gemini_model == DEFAULT_GEMINI_MODEL
+
+
+def test_settings_accepts_custom_gemini_configuration(
+    monkeypatch,
+    disable_dotenv,
+):
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.setenv("GEMINI_MODEL", "custom-gemini-model")
+
+    settings = Settings()
+
+    assert settings.gemini_api_key == "test-gemini-key"
+    assert settings.gemini_model == "custom-gemini-model"
