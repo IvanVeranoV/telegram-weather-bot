@@ -1,31 +1,47 @@
-# Telegram Weather Bot
+# 🌦️ Telegram Weather Bot
 
-A Telegram bot built with Python that provides weather forecasts for user-selected locations. It uses Open-Meteo for weather data and Nominatim for geographical search, with optional AI-powered weather analysis through Gemini.
+<p align="center">
+  <strong>A weather assistant right inside Telegram.</strong><br>
+  Search locations, retrieve weather forecasts and get optional AI-powered insights.
+</p>
 
-## Features
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white" alt="Python 3.13">
+  <img src="https://img.shields.io/badge/Telegram-Bot-26A5E4?logo=telegram&logoColor=white" alt="Telegram Bot">
+  <img src="https://img.shields.io/badge/Gemini-Optional_AI-8E75B2?logo=google" alt="Gemini AI">
+  <img src="https://img.shields.io/badge/Tests-93%2F93%20passing-success" alt="93 tests passing">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
+</p>
 
-- Search for cities and locations using Nominatim.
-- Select the desired location when multiple search results are available.
-- Retrieve weather forecasts from Open-Meteo.
-- Display a concise weather summary for the upcoming hours.
-- Request a detailed 24-hour forecast.
-- Add an optional AI interpretation of the 24-hour forecast using Gemini.
-- Handle asynchronous HTTP requests.
-- Validate and normalize external provider responses.
+---
 
-## Tech Stack
+## ✨ Features
 
-- **Python 3.13**
+| Feature | Description |
+| :--- | :--- |
+| 📍 **Location Search** | Find cities and locations using Nominatim and OpenStreetMap. |
+| 🌤️ **Weather Forecasts** | Retrieve weather information through Open-Meteo. |
+| 🕒 **24-Hour Forecast** | Get a detailed forecast for the upcoming 24 hours. |
+| 🤖 **AI Weather Analysis** | Receive an optional interpretation and practical recommendations powered by Google Gemini. |
+| ⚡ **Asynchronous Architecture** | Handle external HTTP requests asynchronously. |
+| 🛡️ **Error Handling** | Graceful handling of provider errors and AI timeouts. |
+| 🔐 **Secret Redaction** | Redact configured credentials from application logs. |
+
+Gemini is optional: the bot continues to provide weather forecasts even when AI analysis is unavailable or not configured.
+
+## 🧰 Tech Stack
+
+- **Python 3.13** – Core programming language.
 - **python-telegram-bot** – Telegram Bot API integration.
 - **HTTPX** – Asynchronous HTTP client.
-- **python-dotenv** – Environment variable management.
-- **PyCountry** – Country code validation.
 - **Nominatim / OpenStreetMap** – Geocoding and location search.
 - **Open-Meteo** – Weather forecast data.
-- **Google Gen AI SDK** – Optional AI-powered weather analysis.
+- **Google Gen AI SDK** – Optional AI-powered analysis.
+- **python-dotenv** – Environment variable management.
+- **PyCountry** – Country code validation.
 - **pytest** – Automated testing.
 
-## Project Structure
+## 🏗️ Project Structure
 
 ```text
 telegram-weather-bot/
@@ -57,14 +73,14 @@ telegram-weather-bot/
 └── requirements-dev.txt
 ```
 
-## Requirements
+## 🚀 Getting Started
 
-- Python 3.13.
-- A Telegram bot token obtained through [BotFather](https://t.me/BotFather).
+### Requirements
 
-The Nominatim and Open-Meteo services do not require API keys. Gemini analysis is optional and requires a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
+- Python 3.13
+- A Telegram bot token from [BotFather](https://t.me/BotFather).
 
-## Installation
+Nominatim and Open-Meteo do not require API keys. Gemini analysis is optional and requires a key from [Google AI Studio](https://aistudio.google.com/apikey).
 
 ### 1. Clone the repository
 
@@ -75,14 +91,14 @@ cd telegram-weather-bot
 
 ### 2. Create a virtual environment
 
-**Windows (PowerShell):**
+**Windows (PowerShell)**
 
 ```powershell
 py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-**Linux / macOS:**
+**Linux / macOS**
 
 ```bash
 python3.13 -m venv .venv
@@ -91,43 +107,44 @@ source .venv/bin/activate
 
 ### 3. Install dependencies
 
-Install the development dependencies, including the runtime requirements:
-
 ```bash
 python -m pip install -r requirements-dev.txt
 ```
 
 ### 4. Configure environment variables
 
-Create your own Telegram bot using [BotFather](https://t.me/BotFather) and obtain its token.
+Create a Telegram bot using [BotFather](https://t.me/BotFather), then copy the example environment file.
 
-Copy the example environment file:
-
-**Windows (PowerShell):**
+**Windows (PowerShell)**
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-**Linux / macOS:**
+**Linux / macOS**
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and provide your Telegram token. To enable AI analysis in `/forecast`, also provide a Gemini API key:
+Edit `.env` and configure your credentials:
 
 ```dotenv
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+APP_ENV=development
+
+# Optional: enables AI weather analysis
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-3.8-flash
 ```
 
-Gemini is optional. If `GEMINI_API_KEY` is not configured, the bot continues to provide weather forecasts without AI analysis. The model can be changed through `GEMINI_MODEL`.
+Gemini is optional. Without `GEMINI_API_KEY`, the bot works normally and provides weather forecasts without AI analysis.
 
-Never commit your `.env` file or share your credentials publicly.
+The model can be changed using `GEMINI_MODEL`.
 
-## Usage
+> 🔐 Never commit your `.env` file or expose your credentials publicly.
+
+## 💬 Usage
 
 Start the bot from the project root:
 
@@ -135,7 +152,7 @@ Start the bot from the project root:
 python -m src.main
 ```
 
-Open your bot in Telegram and use the following commands:
+Open Telegram and interact with your bot using these commands:
 
 | Command | Description |
 | :--- | :--- |
@@ -143,11 +160,15 @@ Open your bot in Telegram and use the following commands:
 | `/search` | Search for a city or location. |
 | `/search <city>` | Search directly for a specific city. |
 | `/cancel` | Cancel a pending location search. |
-| `/forecast` | Retrieve the 24-hour forecast and, when configured, an AI analysis. |
+| `/forecast` | Retrieve the detailed 24-hour forecast and optional AI analysis. |
 
-The initial weather summary displays the upcoming forecast periods. The `/forecast` command provides the detailed 24-hour forecast. When Gemini is enabled, a separate message adds a concise interpretation and practical recommendations based only on the normalized forecast data.
+The initial weather summary displays the upcoming forecast periods.
 
-## Running Tests
+The `/forecast` command provides a detailed 24-hour forecast. When Gemini is enabled, the bot also sends a separate message containing an interpretation and practical recommendations based on the normalized forecast data.
+
+If Gemini is unavailable or takes too long to respond, the weather forecast is still delivered.
+
+## 🧪 Testing
 
 Run the automated test suite from the project root:
 
@@ -155,34 +176,43 @@ Run the automated test suite from the project root:
 python -m pytest
 ```
 
-## Data Providers and Attribution
+The latest verified test run completed successfully: **93/93 tests passing**.
 
-This project uses the following external services:
+The project includes automated tests covering configuration, geocoding, weather providers, Telegram interactions and AI integration.
 
-- [Open-Meteo](https://open-meteo.com/) for weather forecast data.
-- [Nominatim](https://nominatim.org/) for geocoding and location search.
-- [OpenStreetMap](https://www.openstreetmap.org/copyright) for geographical data.
-- [Google Gemini](https://ai.google.dev/gemini-api/docs) for optional AI weather analysis.
+## 🔌 Data Providers & Attribution
 
-Please respect the usage policies and attribution requirements of these services when using or extending this project.
+This project relies on the following external services:
 
-## Project Status
+- [Open-Meteo](https://open-meteo.com/) – Weather forecast data.
+- [Nominatim](https://nominatim.org/) – Geocoding and location search.
+- [OpenStreetMap](https://www.openstreetmap.org/copyright) – Geographical data.
+- [Google Gemini](https://ai.google.dev/gemini-api/docs) – Optional AI weather analysis.
 
-This project is under active development. The current implementation focuses on location search, weather retrieval, Telegram integration and optional AI-powered weather analysis.
+Please respect the usage policies and attribution requirements of these services.
 
-## Security
+## 🔐 Security
 
 - Credentials are managed through environment variables.
-- The `.env` file must remain local and must never be committed.
-- Each user must provide their own Telegram bot token.
-- The Gemini API key is optional and must also remain private.
+- `.env` is excluded from version control.
+- Configured secrets are redacted from application logs.
+- Gemini API credentials are optional and must remain private.
+- Each user must configure their own Telegram bot token.
 
-## Author
+## 📌 Project Status
 
-### Iván Verano
+**MVP completed — currently on hold.**
 
-GitHub: [@IvanVeranoV](https://github.com/IvanVeranoV)
+The initial implementation is complete, with location search, weather retrieval, Telegram integration and optional AI-powered weather analysis.
 
-## License
+The project has reached its current MVP milestone, with **93 automated tests passing**. Further development may resume in the future.
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+## 👨‍💻 Author
+
+**Iván Verano**
+
+- GitHub: [@IvanVeranoV](https://github.com/IvanVeranoV)
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
