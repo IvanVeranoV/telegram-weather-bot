@@ -1,3 +1,5 @@
+import logging
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 from httpx import AsyncClient
@@ -18,6 +20,13 @@ from telegram.ext import (
 
 from src.geocoding.providers.nominatim_provider import NominatimProvider
 from src.weather.providers.open_meteo_provider import OpenMeteoProvider
+from src.weather.providers.weather_provider_error import (
+    WeatherConnectionError,
+    WeatherProviderError,
+    WeatherRateLimitError,
+    WeatherServiceUnavailableError,
+    WeatherTimeoutError,
+)
 
 USER_AGENT = "BotTelegramTiempo/0.1"
 PENDING_LOCATIONS = "pending_locations"
@@ -28,6 +37,8 @@ SUMMARY_HOURS = 4
 
 
 class TelegramBot:
+    logger = logging.getLogger(__name__)
+
     def __init__(self, settings):
         self.settings = settings
 
@@ -71,6 +82,8 @@ class TelegramBot:
         self.application.add_handler(CommandHandler("forecast", self.forecast))
         self.application.add_handler(CommandHandler("cancel", self.cancel))
 
+        self.application.add_error_handler(self._handle_error)
+
         self.application.add_handler(
             CallbackQueryHandler(
                 self.select_location,
@@ -84,6 +97,64 @@ class TelegramBot:
                 self.handle_search_query,
             )
         )
+
+    async def _handle_error(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ):
+        error = context.error
+
+        if isinstance(error, WeatherRateLimitError):
+            if error.retry_after is not None:
+                update_reply_message = (
+                    "Se ha alcanzado el límite de consultas del servicio "
+                    f"meteorológico. Inténtalo de nuevo en "
+                    f"{timedelta(seconds=error.retry_after)}"
+                )
+            else:
+                update_reply_message = (
+                    "Se ha alcanzado el límite de consultas del servicio "
+                    "meteorológico. Inténtalo de nuevo más tarde"
+                )
+
+        elif isinstance(error, WeatherTimeoutError):
+            update_reply_message = (
+                "La consulta meteorológica está tardando más de lo esperado. "
+                "Inténtalo de nuevo en unos instantes"
+            )
+
+        elif isinstance(error, WeatherServiceUnavailableError):
+            update_reply_message = (
+                "El servicio meteorológico no está disponible temporalmente. "
+                "Inténtalo de nuevo más tarde"
+            )
+
+        elif isinstance(error, WeatherConnectionError):
+            update_reply_message = (
+                "No hemos podido conectar con el servicio meteorológico. "
+                "Comprueba tu conexión e inténtalo de nuevo"
+            )
+
+        elif isinstance(error, WeatherProviderError):
+            update_reply_message = (
+                "No hemos podido obtener los datos meteorológicos "
+                "correctamente. Inténtalo de nuevo más tarde"
+            )
+
+        else:
+            update_reply_message = (
+                "Ha ocurrido un error inesperado al procesar tu solicitud. "
+                "Inténtalo de nuevo más tarde"
+            )
+
+        self.logger.error(
+            "Error while processing update",
+            exc_info=(type(error), error, error.__traceback__),
+        )
+
+        if update and update.effective_message:
+            await update.effective_message.reply_text(update_reply_message)
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("¡Hola! 🌤️ Soy tu asistente meteorológico.")
